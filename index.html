@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Extractor</title>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg: #0f0f0f; --bg2: #1a1a1a; --border: #2a2a2a;
+    --gold: #c9a96e; --white: #e8e4dc; --muted: #666;
+  }
+  body { background:var(--bg); color:var(--white); font-family:'Courier New', monospace; min-height:100vh; padding:2rem; }
+  h1 { font-size:1.1rem; letter-spacing:0.2em; color:var(--gold); text-transform:uppercase; margin-bottom:0.5rem; }
+  .sub { font-size:0.75rem; color:var(--muted); margin-bottom:2rem; line-height:1.6; }
+  .layout { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; height:70vh; }
+  label { font-size:0.65rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:0.5rem; }
+  textarea {
+    width:100%; height:100%; background:var(--bg2); border:1px solid var(--border);
+    color:var(--white); font-family:'Courier New', monospace; font-size:0.8rem;
+    padding:1rem; resize:none; outline:none; line-height:1.7;
+  }
+  textarea:focus { border-color:var(--gold); }
+  .output-wrap { display:flex; flex-direction:column; }
+  .output-box { flex:1; background:var(--bg2); border:1px solid var(--border); overflow-y:auto; padding:1rem; font-size:0.78rem; line-height:1.8; white-space:pre-wrap; word-break:break-word; }
+  .actions { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center; }
+  button {
+    background:var(--gold); color:#0f0f0f; border:none; padding:0.75rem 1.75rem;
+    font-family:'Courier New', monospace; font-size:0.7rem; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; transition:background 0.2s;
+  }
+  button:hover { background:#e2c99a; }
+  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .btn-ghost:hover { border-color:var(--gold); color:var(--gold); background:transparent; }
+  .stats { font-size:0.65rem; color:var(--muted); letter-spacing:0.1em; }
+  .stats span { color:var(--gold); }
+  .user-line { color:#7eb8f7; }
+  .ai-line { color:#a8d8a8; }
+  @media(max-width:700px){ .layout{grid-template-columns:1fr; height:auto;} textarea{height:250px;} }
+</style>
+</head>
+<body>
+<h1>Chat Extractor ✦</h1>
+<p class="sub">Paste a raw AI conversation → get a clean, compressed .txt file you can re-upload to any AI for memory context.</p>
+
+<div class="layout">
+  <div>
+    <label>Paste Raw Chat Here</label>
+    <textarea id="input" placeholder="Copy your entire chat page and paste it here. Works with Claude, ChatGPT, Gemini, and most AI chat interfaces..."></textarea>
+  </div>
+  <div class="output-wrap">
+    <label>Extracted Script Preview</label>
+    <div class="output-box" id="output">Output will appear here...</div>
+  </div>
+</div>
+
+<div class="actions">
+  <button onclick="extract()">Extract & Clean →</button>
+  <button class="btn-ghost" onclick="copyOutput(this)">Copy Text</button>
+  <button class="btn-ghost" onclick="downloadTxt(this)">Download .txt</button>
+  <button class="btn-ghost" onclick="clearAll()">Clear</button>
+  <div class="stats" id="stats"></div>
+</div>
+
+<script>
+let cleanedText = '';
+
+function extract() {
+  const raw = document.getElementById('input').value.trim();
+  if (!raw) return;
+
+  // ── Noise lines to strip entirely ──────────────────────────────
+  const noisePatterns = [
+    /^copy$/i, /^copied!$/i, /^like$/i, /^dislike$/i,
+    /^retry$/i, /^regenerate$/i, /^stop generating$/i, /^edit$/i,
+    /^\d+\s*\/\s*\d+$/,
+    /^share$/i, /^report$/i, /^flag$/i,
+    /^thumbs (up|down)$/i,
+    /^claude\.ai$/i, /^chatgpt\.com$/i, /^gemini\.google\.com$/i,
+    /^new chat$/i, /^today$/i, /^yesterday$/i,
+    /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d/i,
+    /^\d{1,2}:\d{2}\s*(am|pm)?$/i,
+    /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i,
+    /^search$/i, /^projects$/i, /^history$/i, /^starred$/i,
+    /^send a message/i, /^message claude/i, /^ask me anything/i,
+    /^how can i help/i,
+    /^claude is (a|an) ai/i,
+    /^claude can make mistakes/i,
+    /^(anticipated|identified|calibrated|diagnosed|orchestrated|architected|deciphered|evaluated|recognized|determined|validated|created|edited|ran|read)\s+\w/i,
+    /^\s*$/,
+  ];
+
+  function isNoise(line) {
+    const t = line.trim();
+    if (t.length === 0) return true;
+    if (t.length < 3) return true;
+    return noisePatterns.some(p => p.test(t));
+  }
+
+  // ── Strict speaker label detection (must be ONLY a label on the line) ──
+  // e.g. "You" alone, "Claude" alone, "You:" prefix — NOT "ChatGPT hallucinated..."
+  const strictUserLabel = /^(you|user|human|me)\s*:?\s*$/i;
+  const strictAILabel   = /^(claude|chatgpt|gpt-?[34]?|gemini|assistant|copilot|bard|ai)\s*:?\s*$/i;
+  // Also catch "You: some text" and "Claude: some text" prefix format
+  const prefixUser = /^(you|user|human|me)\s*:\s+/i;
+  const prefixAI   = /^(claude|chatgpt|gpt-?[34]?|gemini|assistant|copilot|bard)\s*:\s+/i;
+
+  const lines = raw.split('\n');
+  const result = [];
+
+  // ── Try structured (labeled) format first ──────────────────────
+  let hasLabels = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (strictUserLabel.test(t) || strictAILabel.test(t) || prefixUser.test(t) || prefixAI.test(t)) {
+      hasLabels = true; break;
+    }
+  }
+
+  if (hasLabels) {
+    let currentSpeaker = null;
+    let currentBlock = [];
+
+    function flushBlock() {
+      if (currentBlock.length && currentSpeaker) {
+        const text = currentBlock.join(' ').replace(/\s+/g, ' ').trim();
+        if (text.length > 8) result.push(`${currentSpeaker}: ${text}`);
+      }
+      currentBlock = [];
+    }
+
+    for (const line of lines) {
+      const t = line.trim();
+      if (strictUserLabel.test(t)) { flushBlock(); currentSpeaker = 'YOU'; }
+      else if (strictAILabel.test(t)) { flushBlock(); currentSpeaker = 'AI'; }
+      else if (prefixUser.test(t)) {
+        flushBlock(); currentSpeaker = 'YOU';
+        currentBlock.push(t.replace(prefixUser, '').trim());
+      } else if (prefixAI.test(t)) {
+        flushBlock(); currentSpeaker = 'AI';
+        currentBlock.push(t.replace(prefixAI, '').trim());
+      } else if (!isNoise(t)) {
+        currentBlock.push(t);
+      }
+    }
+    flushBlock();
+  } else {
+    // ── Heuristic mode: for Claude.ai / ChatGPT raw copy-paste ──
+    // These have no labels — turns are separated by blank lines or UI noise.
+    // We build clean paragraphs, then assign speakers by alternating,
+    // using message length as a tiebreaker (user = shorter, AI = longer).
+
+    let paragraphs = [];
+    let current = [];
+
+    for (const line of lines) {
+      const t = line.trim();
+      if (isNoise(t)) {
+        if (current.length) {
+          paragraphs.push(current.join(' ').replace(/\s+/g,' ').trim());
+          current = [];
+        }
+      } else {
+        current.push(t);
+      }
+    }
+    if (current.length) paragraphs.push(current.join(' ').replace(/\s+/g,' ').trim());
+
+    // Remove junk paragraphs (too short or look like UI labels)
+    paragraphs = paragraphs.filter(p => p.split(' ').length >= 4);
+
+    // Merge consecutive very-short paragraphs that are likely the same turn split by UI
+    const merged = [];
+    for (let i = 0; i < paragraphs.length; i++) {
+      const words = paragraphs[i].split(' ').length;
+      if (merged.length > 0 && words < 8) {
+        merged[merged.length - 1] += ' ' + paragraphs[i];
+      } else {
+        merged.push(paragraphs[i]);
+      }
+    }
+
+    // Alternate YOU / AI — first paragraph is usually the user
+    merged.forEach((p, i) => {
+      const spk = i % 2 === 0 ? 'YOU' : 'AI';
+      result.push(`${spk}: ${p}`);
+    });
+  }
+
+  if (result.length === 0) {
+    document.getElementById('output').innerHTML = '<span style="color:#c96e6e">Could not detect structure. Try selecting all text on the chat page (Ctrl+A) and pasting again.</span>';
+    return;
+  }
+
+  cleanedText = result.join('\n\n');
+
+  // Stats
+  const chars = cleanedText.length;
+  const words = cleanedText.split(/\s+/).length;
+  const kb = (new Blob([cleanedText]).size / 1024).toFixed(1);
+  const turns = result.length;
+
+  document.getElementById('stats').innerHTML =
+    `<span>${turns}</span> turns · <span>${words.toLocaleString()}</span> words · <span>${kb} KB</span>`;
+
+  // Render with color
+  const html = result.map(line => {
+    if (line.startsWith('YOU:')) return `<span class="user-line">${escHtml(line)}</span>`;
+    if (line.startsWith('AI:'))  return `<span class="ai-line">${escHtml(line)}</span>`;
+    return escHtml(line);
+  }).join('\n\n');
+
+  document.getElementById('output').innerHTML = html;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyOutput(btn) {
+  if (!cleanedText) { alert('Nothing to copy yet — extract a chat first.'); return; }
+  navigator.clipboard.writeText(cleanedText).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.style.borderColor = 'var(--gold)';
+    btn.style.color = 'var(--gold)';
+    setTimeout(() => {
+      btn.textContent = 'Copy Text';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  }).catch(() => {
+    // Fallback for environments where clipboard API is blocked
+    const ta = document.createElement('textarea');
+    ta.value = cleanedText;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy Text', 2500);
+  });
+}
+
+function downloadTxt(btn) {
+  if (!cleanedText) { alert('Nothing to download yet — extract a chat first.'); return; }
+  try {
+    const blob = new Blob([cleanedText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chat-memory-' + new Date().toISOString().slice(0,10) + '.txt';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+    btn.textContent = '✓ Downloading...';
+    setTimeout(() => btn.textContent = 'Download .txt', 2500);
+  } catch(e) {
+    alert('Download blocked by browser. Use "Copy Text" instead and paste into a .txt file.');
+  }
+}
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('output').textContent = 'Output will appear here...';
+  document.getElementById('stats').innerHTML = '';
+  cleanedText = '';
+}
+
+// Auto-extract on paste
+document.getElementById('input').addEventListener('paste', () => {
+  setTimeout(extract, 100);
+});
+</script>
+</body>
+</html>
