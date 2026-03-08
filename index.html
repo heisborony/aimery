@@ -3,64 +3,247 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat Extractor</title>
+<title>Aimery — AI Memory Extractor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Syne:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  :root {
-    --bg: #0f0f0f; --bg2: #1a1a1a; --border: #2a2a2a;
-    --gold: #c9a96e; --white: #e8e4dc; --muted: #666;
-  }
-  body { background:var(--bg); color:var(--white); font-family:'Courier New', monospace; min-height:100vh; padding:2rem; }
-  h1 { font-size:1.1rem; letter-spacing:0.2em; color:var(--gold); text-transform:uppercase; margin-bottom:0.5rem; }
-  .sub { font-size:0.75rem; color:var(--muted); margin-bottom:2rem; line-height:1.6; }
-  .layout { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; height:70vh; }
-  label { font-size:0.65rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:0.5rem; }
-  textarea {
-    width:100%; height:100%; background:var(--bg2); border:1px solid var(--border);
-    color:var(--white); font-family:'Courier New', monospace; font-size:0.8rem;
-    padding:1rem; resize:none; outline:none; line-height:1.7;
-  }
-  textarea:focus { border-color:var(--gold); }
-  .output-wrap { display:flex; flex-direction:column; }
-  .output-box { flex:1; background:var(--bg2); border:1px solid var(--border); overflow-y:auto; padding:1rem; font-size:0.78rem; line-height:1.8; white-space:pre-wrap; word-break:break-word; }
-  .actions { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center; }
-  button {
-    background:var(--gold); color:#0f0f0f; border:none; padding:0.75rem 1.75rem;
-    font-family:'Courier New', monospace; font-size:0.7rem; font-weight:700;
-    letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; transition:background 0.2s;
-  }
-  button:hover { background:#e2c99a; }
-  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
-  .btn-ghost:hover { border-color:var(--gold); color:var(--gold); background:transparent; }
-  .stats { font-size:0.65rem; color:var(--muted); letter-spacing:0.1em; }
-  .stats span { color:var(--gold); }
-  .user-line { color:#7eb8f7; }
-  .ai-line { color:#a8d8a8; }
-  @media(max-width:700px){ .layout{grid-template-columns:1fr; height:auto;} textarea{height:250px;} }
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:     #0a0908; --bg2: #111009; --bg3: #181510;
+  --border: rgba(201,169,110,0.15);
+  --gold:   #c9a96e; --gold-lt: #e2c99a;
+  --white:  #ede9e1; --muted: #6b6456;
+  --blue:   #7eb8f7; --green: #86c9a0; --red: #c97e7e;
+}
+html { font-size:16px; }
+body {
+  background:var(--bg); color:var(--white);
+  font-family:'Syne',sans-serif; font-weight:300;
+  min-height:100vh; overflow-x:hidden;
+  display:flex; flex-direction:column;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:999; opacity:0.4;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* HEADER */
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:1.5rem 2.5rem; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.logo { display:flex; align-items:baseline; gap:0.4rem; }
+.logo-word { font-family:'Playfair Display',serif; font-style:italic; font-size:1.5rem; color:var(--white); }
+.logo-dot  { width:6px; height:6px; border-radius:50%; background:var(--gold); margin-bottom:2px; }
+.logo-sub  { font-size:0.58rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--muted); }
+.badges { display:flex; gap:0.4rem; flex-wrap:wrap; }
+.badge { font-size:0.52rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); border:1px solid var(--border); padding:0.28rem 0.65rem; }
+
+/* INTRO */
+.intro { padding:2rem 2.5rem 1.25rem; flex-shrink:0; }
+.intro h1 { font-family:'Playfair Display',serif; font-weight:400; font-size:clamp(1.6rem,2.8vw,2.5rem); line-height:1.2; margin-bottom:0.6rem; }
+.intro h1 em { font-style:italic; color:var(--gold); }
+.intro p { font-size:0.8rem; color:var(--muted); line-height:1.85; max-width:560px; }
+
+/* PLATFORM ROW */
+.platforms { display:flex; align-items:center; gap:0.4rem; padding:0.5rem 2.5rem 1.5rem; flex-wrap:wrap; flex-shrink:0; }
+.plat-lbl  { font-size:0.57rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-right:0.3rem; }
+.plat { font-size:0.57rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); border:1px solid var(--border); padding:0.22rem 0.6rem; transition:border-color .3s; cursor:default; }
+.plat:hover { border-color:var(--gold); }
+
+/* WORKSPACE */
+.workspace {
+  display:grid; grid-template-columns:1fr 1fr;
+  border-top:1px solid var(--border);
+  flex:1; min-height:0;
+}
+.panel { display:flex; flex-direction:column; border-right:1px solid var(--border); min-height:0; }
+.panel:last-child { border-right:none; }
+
+.panel-head {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0.75rem 1.5rem; border-bottom:1px solid var(--border);
+  background:var(--bg2); flex-shrink:0;
+}
+.panel-title {
+  font-size:0.58rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--gold);
+  display:flex; align-items:center; gap:0.5rem;
+}
+.panel-title::before { content:''; width:4px; height:4px; border-radius:50%; background:var(--gold); opacity:.6; display:block; }
+.panel-hint { font-size:0.53rem; letter-spacing:0.1em; color:var(--muted); }
+
+textarea {
+  flex:1; width:100%; background:var(--bg); border:none; outline:none;
+  color:var(--white); font-family:'Syne',sans-serif; font-size:0.78rem; font-weight:300;
+  padding:1.5rem; resize:none; line-height:1.9; caret-color:var(--gold); min-height:0;
+}
+textarea::placeholder { color:var(--muted); opacity:.45; font-size:0.73rem; line-height:1.85; }
+textarea:focus { background:var(--bg2); }
+
+/* legend strip */
+.legend { display:flex; gap:1.25rem; padding:0.55rem 1.5rem; border-bottom:1px solid var(--border); background:var(--bg2); flex-shrink:0; }
+.leg { display:flex; align-items:center; gap:0.35rem; font-size:0.53rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); }
+.leg-dot { width:5px; height:5px; border-radius:50%; }
+
+.output-box {
+  flex:1; overflow-y:auto; padding:1.5rem; font-size:0.77rem; line-height:1.9;
+  white-space:pre-wrap; word-break:break-word; min-height:0;
+  font-family:'Syne',sans-serif; font-weight:300; background:var(--bg);
+}
+.output-box::-webkit-scrollbar { width:2px; }
+.output-box::-webkit-scrollbar-thumb { background:var(--border); }
+
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:.75rem; opacity:.3; }
+.empty-icon  { font-family:'Playfair Display',serif; font-style:italic; font-size:2.5rem; color:var(--gold); line-height:1; }
+.empty-txt   { font-size:0.58rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); text-align:center; line-height:1.8; }
+
+.user-line { color:var(--blue); }
+.ai-line   { color:var(--green); }
+
+/* ACTION BARS */
+.abar { display:flex; align-items:stretch; border-top:1px solid var(--border); background:var(--bg2); flex-shrink:0; min-height:50px; }
+.abar .primary {
+  display:flex; align-items:center; gap:.5rem;
+  background:var(--gold); color:var(--bg); border:none;
+  padding:.9rem 1.75rem; font-family:'Syne',sans-serif;
+  font-size:0.62rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase;
+  cursor:pointer; transition:background .2s; white-space:nowrap;
+}
+.abar .primary:hover { background:var(--gold-lt); }
+.abar .ghost {
+  display:flex; align-items:center; gap:.4rem;
+  background:transparent; color:var(--muted); border:none; border-left:1px solid var(--border);
+  padding:.9rem 1.35rem; font-family:'Syne',sans-serif;
+  font-size:0.6rem; font-weight:400; letter-spacing:.15em; text-transform:uppercase;
+  cursor:pointer; transition:color .2s, background .2s; white-space:nowrap;
+}
+.abar .ghost:hover { color:var(--gold); background:rgba(201,169,110,.05); }
+
+.stats-strip {
+  margin-left:auto; border-left:1px solid var(--border);
+  display:flex; align-items:center; gap:1.5rem; padding:0 1.5rem;
+}
+.stt { display:flex; flex-direction:column; align-items:center; gap:1px; }
+.stt-v { color:var(--gold); font-size:0.88rem; font-weight:500; line-height:1; }
+.stt-l { font-size:0.48rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); }
+
+/* FOOTER */
+footer {
+  padding:1rem 2.5rem; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; gap:1rem; flex-shrink:0;
+}
+.foot-l { font-size:0.58rem; letter-spacing:.12em; color:var(--muted); }
+.foot-l strong { color:var(--gold); font-weight:500; }
+.foot-l a { color:var(--gold); text-decoration:none; }
+.foot-r { font-size:0.52rem; letter-spacing:.1em; color:var(--muted); opacity:.4; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:2rem; left:50%; transform:translateX(-50%);
+  font-family:'Syne',sans-serif; font-size:0.68rem; letter-spacing:.1em;
+  padding:.7rem 1.5rem; z-index:9999; pointer-events:none;
+  animation: toastIn .25s ease;
+}
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  header { padding:1.25rem 1.5rem; }
+  .badges { display:none; }
+  .intro { padding:1.5rem 1.5rem 1rem; }
+  .platforms { padding:.4rem 1.5rem 1.25rem; }
+  .workspace { grid-template-columns:1fr; }
+  .panel { border-right:none; border-bottom:1px solid var(--border); min-height:280px; }
+  textarea { min-height:200px; }
+  .stats-strip { border-left:none; border-top:1px solid var(--border); width:100%; padding:.7rem 1.5rem; margin-left:0; }
+  .abar { flex-wrap:wrap; }
+  footer { padding:.9rem 1.5rem; }
+}
+::selection { background:rgba(201,169,110,.22); color:var(--white); }
+@keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 </style>
 </head>
 <body>
-<h1>Chat Extractor ✦</h1>
-<p class="sub">Paste a raw AI conversation → get a clean, compressed .txt file you can re-upload to any AI for memory context.</p>
 
-<div class="layout">
-  <div>
-    <label>Paste Raw Chat Here</label>
-    <textarea id="input" placeholder="Copy your entire chat page and paste it here. Works with Claude, ChatGPT, Gemini, and most AI chat interfaces..."></textarea>
+<header>
+  <div class="logo">
+    <span class="logo-word">Aimery</span>
+    <div class="logo-dot"></div>
+    <span class="logo-sub">Memory Extractor</span>
   </div>
-  <div class="output-wrap">
-    <label>Extracted Script Preview</label>
-    <div class="output-box" id="output">Output will appear here...</div>
+  <div class="badges">
+    <span class="badge">Free</span>
+    <span class="badge">No Signup</span>
+    <span class="badge">Runs Locally</span>
+    <span class="badge">Open Source</span>
   </div>
+</header>
+
+<div class="intro">
+  <h1>Give your AI a <em>memory.</em><br>Across every platform.</h1>
+  <p>Paste any raw AI conversation → Aimery strips the noise → Download a clean .txt → Upload to your next chat → Your AI picks up exactly where you left off.</p>
 </div>
 
-<div class="actions">
-  <button onclick="extract()">Extract & Clean →</button>
-  <button class="btn-ghost" onclick="copyOutput(this)">Copy Text</button>
-  <button class="btn-ghost" onclick="downloadTxt(this)">Download .txt</button>
-  <button class="btn-ghost" onclick="clearAll()">Clear</button>
-  <div class="stats" id="stats"></div>
+<div class="platforms">
+  <span class="plat-lbl">Works with</span>
+  <span class="plat">Claude</span>
+  <span class="plat">ChatGPT</span>
+  <span class="plat">Grok</span>
+  <span class="plat">Gemini</span>
+  <span class="plat">Meta AI</span>
+  <span class="plat">Copilot</span>
+  <span class="plat">+ Any AI</span>
 </div>
+
+<div class="workspace">
+
+  <!-- INPUT -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Raw Chat Input</div>
+      <span class="panel-hint">Ctrl+A on any AI chat → paste here</span>
+    </div>
+    <textarea id="input" placeholder="Open any AI chat (Claude, ChatGPT, Grok…)&#10;&#10;Select all with Ctrl+A → Copy → Paste here&#10;&#10;Aimery auto-extracts on paste."></textarea>
+    <div class="abar">
+      <button class="primary" onclick="extract()">Extract & Clean →</button>
+      <button class="ghost" onclick="clearAll()">✕ Clear</button>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Extracted Memory</div>
+      <span class="panel-hint">Clean · Compressed · Portable</span>
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>You</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>AI</div>
+    </div>
+    <div class="output-box" id="output">
+      <div class="empty-state">
+        <div class="empty-icon">✦</div>
+        <div class="empty-txt">Output appears here<br>after extraction</div>
+      </div>
+    </div>
+    <div class="abar">
+      <button class="primary" onclick="downloadTxt(this)">↓ Download .txt</button>
+      <button class="ghost"   onclick="copyOutput(this)">⎘ Copy Text</button>
+      <div class="stats-strip">
+        <div class="stt"><div class="stt-v" id="s-turns">—</div><div class="stt-l">Turns</div></div>
+        <div class="stt"><div class="stt-v" id="s-words">—</div><div class="stt-l">Words</div></div>
+        <div class="stt"><div class="stt-v" id="s-kb">—</div><div class="stt-l">KB</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="foot-l">Built by <strong>@heisborony</strong> · Lagos 🇳🇬 · <a href="https://heisborony.github.io/Aimery-The-World-s-First-Most-Efficient-AI-Memory-Library./" target="_blank">GitHub ↗</a></div>
+  <div class="foot-r">No data leaves your browser. Runs 100% locally.</div>
+</footer>
 
 <script>
 let cleanedText = '';
@@ -69,210 +252,231 @@ function extract() {
   const raw = document.getElementById('input').value.trim();
   if (!raw) return;
 
-  // ── Noise lines to strip entirely ──────────────────────────────
   const noisePatterns = [
-    /^copy$/i, /^copied!$/i, /^like$/i, /^dislike$/i,
-    /^retry$/i, /^regenerate$/i, /^stop generating$/i, /^edit$/i,
-    /^\d+\s*\/\s*\d+$/,
-    /^share$/i, /^report$/i, /^flag$/i,
-    /^thumbs (up|down)$/i,
-    /^claude\.ai$/i, /^chatgpt\.com$/i, /^gemini\.google\.com$/i,
-    /^new chat$/i, /^today$/i, /^yesterday$/i,
+    /^copy$/i,/^copied!$/i,/^like$/i,/^dislike$/i,
+    /^retry$/i,/^regenerate$/i,/^stop generating$/i,/^edit$/i,
+    /^\d+\s*\/\s*\d+$/,/^share$/i,/^report$/i,/^flag$/i,
+    /^thumbs (up|down)$/i,/^claude\.ai$/i,/^chatgpt\.com$/i,/^gemini\.google\.com$/i,
+    /^new chat$/i,/^today$/i,/^yesterday$/i,
     /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d/i,
     /^\d{1,2}:\d{2}\s*(am|pm)?$/i,
     /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i,
-    /^search$/i, /^projects$/i, /^history$/i, /^starred$/i,
-    /^send a message/i, /^message claude/i, /^ask me anything/i,
-    /^how can i help/i,
-    /^claude is (a|an) ai/i,
-    /^claude can make mistakes/i,
+    /^search$/i,/^projects$/i,/^history$/i,/^starred$/i,
+    /^send a message/i,/^message claude/i,/^ask me anything/i,
+    /^how can i help/i,/^claude is (a|an) ai/i,/^claude can make mistakes/i,
     /^(anticipated|identified|calibrated|diagnosed|orchestrated|architected|deciphered|evaluated|recognized|determined|validated|created|edited|ran|read)\s+\w/i,
     /^\s*$/,
   ];
 
-  function isNoise(line) {
-    const t = line.trim();
-    if (t.length === 0) return true;
-    if (t.length < 3) return true;
+  function isNoise(l) {
+    const t = l.trim();
+    if (!t || t.length < 3) return true;
     return noisePatterns.some(p => p.test(t));
   }
 
-  // ── Strict speaker label detection (must be ONLY a label on the line) ──
-  // e.g. "You" alone, "Claude" alone, "You:" prefix — NOT "ChatGPT hallucinated..."
-  const strictUserLabel = /^(you|user|human|me)\s*:?\s*$/i;
-  const strictAILabel   = /^(claude|chatgpt|gpt-?[34]?|gemini|assistant|copilot|bard|ai)\s*:?\s*$/i;
-  // Also catch "You: some text" and "Claude: some text" prefix format
+  const strictUser = /^(you|user|human|me)\s*:?\s*$/i;
+  const strictAI   = /^(claude|chatgpt|gpt-?[34]?|gemini|assistant|copilot|bard|ai)\s*:?\s*$/i;
   const prefixUser = /^(you|user|human|me)\s*:\s+/i;
   const prefixAI   = /^(claude|chatgpt|gpt-?[34]?|gemini|assistant|copilot|bard)\s*:\s+/i;
 
   const lines = raw.split('\n');
   const result = [];
 
-  // ── Try structured (labeled) format first ──────────────────────
-  let hasLabels = false;
-  for (const line of lines) {
-    const t = line.trim();
-    if (strictUserLabel.test(t) || strictAILabel.test(t) || prefixUser.test(t) || prefixAI.test(t)) {
-      hasLabels = true; break;
-    }
-  }
+  let hasLabels = lines.some(l => {
+    const t = l.trim();
+    return strictUser.test(t)||strictAI.test(t)||prefixUser.test(t)||prefixAI.test(t);
+  });
 
   if (hasLabels) {
-    let currentSpeaker = null;
-    let currentBlock = [];
-
-    function flushBlock() {
-      if (currentBlock.length && currentSpeaker) {
-        const text = currentBlock.join(' ').replace(/\s+/g, ' ').trim();
-        if (text.length > 8) result.push(`${currentSpeaker}: ${text}`);
+    let spk = null, blk = [];
+    const flush = () => {
+      if (blk.length && spk) {
+        const txt = blk.join(' ').replace(/\s+/g,' ').trim();
+        if (txt.length > 8) result.push(`${spk}: ${txt}`);
       }
-      currentBlock = [];
-    }
-
+      blk = [];
+    };
     for (const line of lines) {
       const t = line.trim();
-      if (strictUserLabel.test(t)) { flushBlock(); currentSpeaker = 'YOU'; }
-      else if (strictAILabel.test(t)) { flushBlock(); currentSpeaker = 'AI'; }
-      else if (prefixUser.test(t)) {
-        flushBlock(); currentSpeaker = 'YOU';
-        currentBlock.push(t.replace(prefixUser, '').trim());
-      } else if (prefixAI.test(t)) {
-        flushBlock(); currentSpeaker = 'AI';
-        currentBlock.push(t.replace(prefixAI, '').trim());
-      } else if (!isNoise(t)) {
-        currentBlock.push(t);
-      }
+      if (strictUser.test(t))      { flush(); spk='YOU'; }
+      else if (strictAI.test(t))   { flush(); spk='AI'; }
+      else if (prefixUser.test(t)) { flush(); spk='YOU'; blk.push(t.replace(prefixUser,'').trim()); }
+      else if (prefixAI.test(t))   { flush(); spk='AI';  blk.push(t.replace(prefixAI,'').trim()); }
+      else if (!isNoise(t))        { blk.push(t); }
     }
-    flushBlock();
+    flush();
   } else {
-    // ── Heuristic mode: for Claude.ai / ChatGPT raw copy-paste ──
-    // These have no labels — turns are separated by blank lines or UI noise.
-    // We build clean paragraphs, then assign speakers by alternating,
-    // using message length as a tiebreaker (user = shorter, AI = longer).
-
-    let paragraphs = [];
-    let current = [];
-
+    let paras = [], cur = [];
     for (const line of lines) {
       const t = line.trim();
-      if (isNoise(t)) {
-        if (current.length) {
-          paragraphs.push(current.join(' ').replace(/\s+/g,' ').trim());
-          current = [];
-        }
-      } else {
-        current.push(t);
-      }
+      if (isNoise(t)) { if (cur.length) { paras.push(cur.join(' ').replace(/\s+/g,' ').trim()); cur=[]; } }
+      else cur.push(t);
     }
-    if (current.length) paragraphs.push(current.join(' ').replace(/\s+/g,' ').trim());
-
-    // Remove junk paragraphs (too short or look like UI labels)
-    paragraphs = paragraphs.filter(p => p.split(' ').length >= 4);
-
-    // Merge consecutive very-short paragraphs that are likely the same turn split by UI
+    if (cur.length) paras.push(cur.join(' ').replace(/\s+/g,' ').trim());
+    paras = paras.filter(p => p.split(' ').length >= 4);
     const merged = [];
-    for (let i = 0; i < paragraphs.length; i++) {
-      const words = paragraphs[i].split(' ').length;
-      if (merged.length > 0 && words < 8) {
-        merged[merged.length - 1] += ' ' + paragraphs[i];
-      } else {
-        merged.push(paragraphs[i]);
-      }
+    for (const p of paras) {
+      if (merged.length && p.split(' ').length < 8) merged[merged.length-1] += ' '+p;
+      else merged.push(p);
     }
-
-    // Alternate YOU / AI — first paragraph is usually the user
-    merged.forEach((p, i) => {
-      const spk = i % 2 === 0 ? 'YOU' : 'AI';
-      result.push(`${spk}: ${p}`);
-    });
+    merged.forEach((p,i) => result.push(`${i%2===0?'YOU':'AI'}: ${p}`));
   }
 
-  if (result.length === 0) {
-    document.getElementById('output').innerHTML = '<span style="color:#c96e6e">Could not detect structure. Try selecting all text on the chat page (Ctrl+A) and pasting again.</span>';
+  if (!result.length) {
+    document.getElementById('output').innerHTML =
+      '<div style="padding:2rem;color:var(--red);font-size:0.78rem;line-height:1.9;">⚠ Could not detect structure.<br><br>Try Ctrl+A on the chat page, copy, then paste here.</div>';
     return;
   }
 
   cleanedText = result.join('\n\n');
-
-  // Stats
-  const chars = cleanedText.length;
   const words = cleanedText.split(/\s+/).length;
-  const kb = (new Blob([cleanedText]).size / 1024).toFixed(1);
-  const turns = result.length;
+  const kb    = (new Blob([cleanedText]).size/1024).toFixed(1);
 
-  document.getElementById('stats').innerHTML =
-    `<span>${turns}</span> turns · <span>${words.toLocaleString()}</span> words · <span>${kb} KB</span>`;
+  document.getElementById('s-turns').textContent = result.length;
+  document.getElementById('s-words').textContent = words.toLocaleString();
+  document.getElementById('s-kb').textContent    = kb+' KB';
 
-  // Render with color
-  const html = result.map(line => {
-    if (line.startsWith('YOU:')) return `<span class="user-line">${escHtml(line)}</span>`;
-    if (line.startsWith('AI:'))  return `<span class="ai-line">${escHtml(line)}</span>`;
-    return escHtml(line);
+  document.getElementById('output').innerHTML = result.map(line => {
+    if (line.startsWith('YOU:')) return `<span class="user-line">${esc(line)}</span>`;
+    if (line.startsWith('AI:'))  return `<span class="ai-line">${esc(line)}</span>`;
+    return esc(line);
   }).join('\n\n');
-
-  document.getElementById('output').innerHTML = html;
 }
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 function copyOutput(btn) {
-  if (!cleanedText) { alert('Nothing to copy yet — extract a chat first.'); return; }
+  if (!cleanedText) { toast('Extract a chat first','error'); return; }
   navigator.clipboard.writeText(cleanedText).then(() => {
-    btn.textContent = '✓ Copied!';
-    btn.style.borderColor = 'var(--gold)';
-    btn.style.color = 'var(--gold)';
-    setTimeout(() => {
-      btn.textContent = 'Copy Text';
-      btn.style.borderColor = '';
-      btn.style.color = '';
-    }, 2500);
-  }).catch(() => {
-    // Fallback for environments where clipboard API is blocked
-    const ta = document.createElement('textarea');
-    ta.value = cleanedText;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => btn.textContent = 'Copy Text', 2500);
+    btn.textContent='✓ Copied!'; btn.style.color='var(--green)';
+    setTimeout(()=>{ btn.textContent='⎘ Copy Text'; btn.style.color=''; },2500);
+  }).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=cleanedText; ta.style.cssText='position:fixed;opacity:0;';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent='⎘ Copy Text',2500);
   });
 }
 
 function downloadTxt(btn) {
-  if (!cleanedText) { alert('Nothing to download yet — extract a chat first.'); return; }
-  try {
-    const blob = new Blob([cleanedText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'chat-memory-' + new Date().toISOString().slice(0,10) + '.txt';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
-    btn.textContent = '✓ Downloading...';
-    setTimeout(() => btn.textContent = 'Download .txt', 2500);
-  } catch(e) {
-    alert('Download blocked by browser. Use "Copy Text" instead and paste into a .txt file.');
-  }
+  if (!cleanedText) { toast('Extract a chat first','error'); return; }
+  showFilenameModal(btn);
+}
+
+function showFilenameModal(btn) {
+  // backdrop
+  const backdrop = document.createElement('div');
+  backdrop.id = 'fn-backdrop';
+  backdrop.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;
+    display:flex;align-items:center;justify-content:center;
+    animation:fadeIn .2s ease;
+  `;
+
+  const today = new Date().toISOString().slice(0,10);
+
+  backdrop.innerHTML = `
+    <div style="
+      background:var(--bg2);border:1px solid var(--border);
+      padding:2rem 2.5rem;width:min(420px,90vw);
+      animation:slideUp .25s ease;
+    ">
+      <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:1.3rem;color:var(--white);margin-bottom:0.4rem;">
+        Name your file
+      </div>
+      <div style="font-size:0.65rem;letter-spacing:0.15em;color:var(--muted);margin-bottom:1.75rem;line-height:1.7;">
+        Choose a name that describes this conversation.
+      </div>
+
+      <div style="position:relative;margin-bottom:1.5rem;">
+        <input id="fn-input" type="text" value="aimery-${today}"
+          style="
+            width:100%;background:var(--bg);border:1px solid var(--border);
+            color:var(--white);font-family:'Syne',sans-serif;font-size:0.85rem;
+            font-weight:300;padding:0.85rem 3.5rem 0.85rem 1rem;outline:none;
+            caret-color:var(--gold);letter-spacing:0.03em;
+          "
+        />
+        <span style="
+          position:absolute;right:1rem;top:50%;transform:translateY(-50%);
+          font-size:0.62rem;letter-spacing:0.1em;color:var(--muted);
+        ">.txt</span>
+      </div>
+
+      <div style="display:flex;gap:0;border:1px solid var(--border);">
+        <button id="fn-cancel" style="
+          flex:1;background:transparent;color:var(--muted);border:none;border-right:1px solid var(--border);
+          padding:0.9rem;font-family:'Syne',sans-serif;font-size:0.62rem;
+          font-weight:400;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;
+          transition:color .2s;
+        ">Cancel</button>
+        <button id="fn-save" style="
+          flex:2;background:var(--gold);color:var(--bg);border:none;
+          padding:0.9rem;font-family:'Syne',sans-serif;font-size:0.62rem;
+          font-weight:600;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;
+          transition:background .2s;
+        ">Save File ↓</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  // focus & select input
+  const input = document.getElementById('fn-input');
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+
+  // style hover
+  const saveBtn   = document.getElementById('fn-save');
+  const cancelBtn = document.getElementById('fn-cancel');
+  saveBtn.onmouseenter   = () => saveBtn.style.background   = 'var(--gold-lt)';
+  saveBtn.onmouseleave   = () => saveBtn.style.background   = 'var(--gold)';
+  cancelBtn.onmouseenter = () => cancelBtn.style.color      = 'var(--gold)';
+  cancelBtn.onmouseleave = () => cancelBtn.style.color      = 'var(--muted)';
+
+  const close = () => document.body.removeChild(backdrop);
+
+  const doSave = () => {
+    let name = input.value.trim() || 'aimery-'+today;
+    name = name.replace(/[^a-zA-Z0-9_\-. ]/g,'').trim() || 'aimery-'+today;
+    if (!name.endsWith('.txt')) name += '.txt';
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([cleanedText],{type:'text/plain;charset=utf-8'}));
+      a.download = name;
+      a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(() => document.body.removeChild(a), 1000);
+      btn.textContent='✓ Saved!'; btn.style.color='var(--green)';
+      setTimeout(()=>{ btn.textContent='↓ Download .txt'; btn.style.color=''; },2500);
+    } catch(e) { toast('Use Copy Text instead','error'); }
+    close();
+  };
+
+  saveBtn.onclick   = doSave;
+  cancelBtn.onclick = close;
+  backdrop.onclick  = e => { if (e.target === backdrop) close(); };
+  input.onkeydown   = e => { if (e.key==='Enter') doSave(); if (e.key==='Escape') close(); };
 }
 
 function clearAll() {
-  document.getElementById('input').value = '';
-  document.getElementById('output').textContent = 'Output will appear here...';
-  document.getElementById('stats').innerHTML = '';
-  cleanedText = '';
+  document.getElementById('input').value='';
+  document.getElementById('output').innerHTML='<div class="empty-state"><div class="empty-icon">✦</div><div class="empty-txt">Output appears here<br>after extraction</div></div>';
+  ['s-turns','s-words','s-kb'].forEach(id=>document.getElementById(id).textContent='—');
+  cleanedText='';
 }
 
-// Auto-extract on paste
-document.getElementById('input').addEventListener('paste', () => {
-  setTimeout(extract, 100);
-});
+function toast(msg,type) {
+  const t=document.createElement('div');
+  t.className='toast';
+  t.textContent=msg;
+  t.style.background=type==='error'?'var(--red)':'var(--green)';
+  t.style.color='var(--bg)';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2500);
+}
+
+document.getElementById('input').addEventListener('paste',()=>setTimeout(extract,120));
 </script>
 </body>
 </html>
